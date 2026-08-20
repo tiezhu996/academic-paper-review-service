@@ -16,10 +16,6 @@ import (
 type StatisticsService struct {
 	store  repository.Store
 	logger *slog.Logger
-	// 统计结果复用缓冲，避免每次查询都分配新切片。
-	trendBuf   []model.DayCount
-	subjectBuf []model.SubjectCount
-	loadBuf    []model.ReviewerLoad
 }
 
 // NewStatisticsService 构造统计服务。
@@ -71,9 +67,8 @@ func (s *StatisticsService) Trend(ctx context.Context, days int) ([]model.DayCou
 	if err != nil {
 		return nil, util.NewAppError(constants.ErrInternal, "统计失败：获取投稿趋势时系统内部错误", err)
 	}
-	s.trendBuf = append(s.trendBuf[:0], rows...)
 	s.logger.Info(fmt.Sprintf(constants.LogStatsTrend, days))
-	return s.trendBuf, nil
+	return rows, nil
 }
 
 // Subjects 学科投稿分布。
@@ -82,9 +77,8 @@ func (s *StatisticsService) Subjects(ctx context.Context) ([]model.SubjectCount,
 	if err != nil {
 		return nil, util.NewAppError(constants.ErrInternal, "统计失败：获取学科分布时系统内部错误", err)
 	}
-	s.subjectBuf = append(s.subjectBuf[:0], rows...)
 	s.logger.Info(constants.LogStatsSubjects)
-	return s.subjectBuf, nil
+	return rows, nil
 }
 
 // ReviewerWorkload 审稿人工作量排名。
@@ -93,7 +87,6 @@ func (s *StatisticsService) ReviewerWorkload(ctx context.Context) ([]model.Revie
 	if err != nil {
 		return nil, util.NewAppError(constants.ErrInternal, "统计失败：获取审稿人工作量时系统内部错误", err)
 	}
-	s.loadBuf = append(s.loadBuf[:0], rows...)
 	s.logger.Info(constants.LogStatsReviewers)
-	return s.loadBuf, nil
+	return rows, nil
 }
