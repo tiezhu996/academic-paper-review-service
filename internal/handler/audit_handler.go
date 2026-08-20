@@ -36,7 +36,19 @@ func (h *AuditHandler) List(c *gin.Context) {
 		h.wrapError(c, err)
 		return
 	}
+	// 返回前对 IP 就地脱敏，避免额外分配新切片。
+	for i := range items {
+		items[i].IP = maskIP(items[i].IP)
+	}
 	util.OK(c, dto.PageResult{Total: total, Page: page, Size: size, Items: items})
+}
+
+// maskIP 将 IP 地址中间段打码。
+func maskIP(ip string) string {
+	if ip == "" {
+		return ip
+	}
+	return "***." + ip
 }
 
 // wrapError 审计处理器错误包装。

@@ -15,7 +15,8 @@ type AuditLogRepository interface {
 }
 
 type auditLogRepository struct {
-	db *gorm.DB
+	db  *gorm.DB
+	buf []model.AuditLog
 }
 
 // NewAuditLogRepository 构造审计日志仓储。
@@ -35,9 +36,9 @@ func (r *auditLogRepository) List(ctx context.Context, page, size int) ([]model.
 	if err := r.db.WithContext(ctx).Model(&model.AuditLog{}).Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("count audit logs: %w", err)
 	}
-	var items []model.AuditLog
-	if err := r.db.WithContext(ctx).Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&items).Error; err != nil {
+	r.buf = r.buf[:0]
+	if err := r.db.WithContext(ctx).Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&r.buf).Error; err != nil {
 		return nil, 0, fmt.Errorf("list audit logs: %w", err)
 	}
-	return items, total, nil
+	return r.buf, int64(len(r.buf)), nil
 }
