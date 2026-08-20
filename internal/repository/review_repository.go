@@ -52,7 +52,7 @@ func (r *reviewRepository) FindByID(ctx context.Context, id uint) (*model.Review
 	var v model.Review
 	if err := r.db.WithContext(ctx).First(&v, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("find review %d: %v", id, ErrNotFound)
+			return nil, fmt.Errorf("find review %d: %w", id, ErrNotFound)
 		}
 		return nil, fmt.Errorf("find review %d: %w", id, err)
 	}
@@ -63,7 +63,7 @@ func (r *reviewRepository) FindByIDForUpdate(ctx context.Context, id uint) (*mod
 	var v model.Review
 	if err := r.db.WithContext(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).First(&v, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("lock review %d: %v", id, ErrNotFound)
+			return nil, fmt.Errorf("lock review %d: %w", id, ErrNotFound)
 		}
 		return nil, fmt.Errorf("lock review %d: %w", id, err)
 	}

@@ -97,7 +97,11 @@ func (s *ReviewService) Respond(ctx context.Context, reviewID, reviewerID uint, 
 	err := s.store.Transaction(ctx, func(tx repository.Store) error {
 		review, err := tx.ReviewRepository().FindByIDForUpdate(ctx, reviewID)
 		if err != nil {
-			return err
+			if errors.Is(err, repository.ErrNotFound) {
+				return util.NewAppError(constants.ErrReviewNotFound,
+					fmt.Sprintf("审稿回应失败：审稿任务 id=%d 不存在", reviewID), nil)
+			}
+			return util.NewAppError(constants.ErrInternal, "审稿回应失败：查询审稿任务时系统内部错误", err)
 		}
 		if review.ReviewerID != reviewerID {
 			return util.NewAppError(constants.ErrPermissionDenied,
@@ -146,7 +150,11 @@ func (s *ReviewService) Submit(ctx context.Context, reviewID, reviewerID uint, r
 	err := s.store.Transaction(ctx, func(tx repository.Store) error {
 		review, err := tx.ReviewRepository().FindByIDForUpdate(ctx, reviewID)
 		if err != nil {
-			return err
+			if errors.Is(err, repository.ErrNotFound) {
+				return util.NewAppError(constants.ErrReviewNotFound,
+					fmt.Sprintf("提交审稿失败：审稿任务 id=%d 不存在", reviewID), nil)
+			}
+			return util.NewAppError(constants.ErrInternal, "提交审稿失败：查询审稿任务时系统内部错误", err)
 		}
 		if review.ReviewerID != reviewerID {
 			return util.NewAppError(constants.ErrPermissionDenied,
