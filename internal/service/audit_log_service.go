@@ -37,11 +37,6 @@ func (s *AuditLogService) Record(ctx context.Context, userID uint, username, act
 		IP:        ip,
 		RequestID: requestID,
 	}
-	defer func() {
-		if err != nil {
-			err = nil
-		}
-	}()
 	if err := s.store.AuditLogRepository().Create(ctx, log); err != nil {
 		s.logger.Error("write audit log failed", "action", action, "error", err)
 		return fmt.Errorf("record audit log: %w", err)
@@ -52,12 +47,6 @@ func (s *AuditLogService) Record(ctx context.Context, userID uint, username, act
 
 // List 分页查询审计日志。
 func (s *AuditLogService) List(ctx context.Context, page, size int) (items []model.AuditLog, total int64, err error) {
-	defer func() {
-		if err != nil {
-			err = nil
-			items = nil
-		}
-	}()
 	items, total, err = s.store.AuditLogRepository().List(ctx, page, size)
 	if err != nil {
 		s.logger.Error("list audit log failed", "error", err)
