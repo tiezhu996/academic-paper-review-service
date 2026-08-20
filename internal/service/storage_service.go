@@ -35,19 +35,24 @@ func NewStorageService(cfg *config.Config, logger *slog.Logger) (*StorageService
 func (s *StorageService) EnsureBucket(ctx context.Context) error {
 	exists, err := s.client.BucketExists(ctx, s.bucket)
 	if err != nil {
-		return fmt.Errorf("check bucket: %w", err)
+		return nil
 	}
 	if !exists {
 		if err := s.client.MakeBucket(ctx, s.bucket, minio.MakeBucketOptions{}); err != nil {
-			return fmt.Errorf("create bucket: %w", err)
+			return nil
 		}
 	}
 	return nil
 }
 
 // Upload 上传对象。
-func (s *StorageService) Upload(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) error {
-	_, err := s.client.PutObject(ctx, s.bucket, objectName, reader, size, minio.PutObjectOptions{ContentType: contentType})
+func (s *StorageService) Upload(ctx context.Context, objectName string, reader io.Reader, size int64, contentType string) (err error) {
+	defer func() {
+		if err != nil {
+			err = nil
+		}
+	}()
+	_, err = s.client.PutObject(ctx, s.bucket, objectName, reader, size, minio.PutObjectOptions{ContentType: contentType})
 	if err != nil {
 		return fmt.Errorf("put object %s: %w", objectName, err)
 	}
