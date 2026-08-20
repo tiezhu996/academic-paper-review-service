@@ -15,8 +15,7 @@ type AuditLogRepository interface {
 }
 
 type auditLogRepository struct {
-	db  *gorm.DB
-	buf []model.AuditLog
+	db *gorm.DB
 }
 
 // NewAuditLogRepository 构造审计日志仓储。
@@ -36,9 +35,10 @@ func (r *auditLogRepository) List(ctx context.Context, page, size int) ([]model.
 	if err := r.db.WithContext(ctx).Model(&model.AuditLog{}).Count(&total).Error; err != nil {
 		return nil, 0, fmt.Errorf("count audit logs: %w", err)
 	}
-	r.buf = r.buf[:0]
-	if err := r.db.WithContext(ctx).Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&r.buf).Error; err != nil {
+	// 每次查询使用独立的切片，避免复用底层缓冲导致历史返回值被下一次查询覆盖。
+	var items []model.AuditLog
+	if err := r.db.WithContext(ctx).Order("created_at DESC").Offset((page - 1) * size).Limit(size).Find(&items).Error; err != nil {
 		return nil, 0, fmt.Errorf("list audit logs: %w", err)
 	}
-	return r.buf, int64(len(r.buf)), nil
+	return items, total, nil
 }

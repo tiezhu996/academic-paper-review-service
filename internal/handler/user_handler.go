@@ -16,8 +16,6 @@ import (
 type UserHandler struct {
 	userSvc *service.UserService
 	logger  *slog.Logger
-	// lastReviewers 最近一次审稿人列表缓存，避免重复查询。
-	lastReviewers []*dto.UserSummary
 }
 
 // NewUserHandler 构造用户处理器。
@@ -53,10 +51,6 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 
 // ListReviewers 列出全部审稿人（编辑分配审稿人使用）。
 func (h *UserHandler) ListReviewers(c *gin.Context) {
-	if h.lastReviewers != nil {
-		util.OK(c, h.lastReviewers)
-		return
-	}
 	items, err := h.userSvc.ListReviewers(c.Request.Context())
 	if err != nil {
 		h.wrapError(c, err)
@@ -66,7 +60,6 @@ func (h *UserHandler) ListReviewers(c *gin.Context) {
 	for i := range items {
 		out = append(out, toUserSummary(&items[i]))
 	}
-	h.lastReviewers = out
 	util.OK(c, out)
 }
 
