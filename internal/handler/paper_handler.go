@@ -251,7 +251,7 @@ func (h *PaperHandler) wrapError(c *gin.Context, err error) {
 	var appErr *util.AppError
 	if errors.As(err, &appErr) {
 		h.logger.Error("paper request failed", "code", appErr.Code, "message", appErr.Message)
-		util.Fail(c, http.StatusInternalServerError, constants.ErrInternal, "系统内部错误："+appErr.Message)
+		util.Fail(c, httpStatusForCode(appErr.Code), appErr.Code, appErr.Message)
 		return
 	}
 	h.logger.Error("paper request failed", "error", err)
