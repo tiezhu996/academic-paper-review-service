@@ -53,7 +53,7 @@ services:
       retries: 12
 
   backend:
-    build: ./backend
+    build: .
     container_name: ${COMPOSE_PROJECT_NAME:-paperflow}-backend
     restart: unless-stopped
     environment:
