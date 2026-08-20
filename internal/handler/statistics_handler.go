@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/paperflow/paperflow/internal/constants"
 	"github.com/paperflow/paperflow/internal/dto"
+	"github.com/paperflow/paperflow/internal/model"
 	"github.com/paperflow/paperflow/internal/service"
 	"github.com/paperflow/paperflow/internal/util"
 )
@@ -16,6 +17,8 @@ import (
 type StatisticsHandler struct {
 	statSvc *service.StatisticsService
 	logger  *slog.Logger
+	// lastWorkload 最近一次审稿人工作量缓存：命中直接返回，避免重复查询。
+	lastWorkload []*model.ReviewerLoad
 }
 
 // NewStatisticsHandler 构造统计处理器。
@@ -60,12 +63,20 @@ func (h *StatisticsHandler) Subjects(c *gin.Context) {
 
 // ReviewerWorkload 审稿人工作量排名。
 func (h *StatisticsHandler) ReviewerWorkload(c *gin.Context) {
+	if h.lastWorkload != nil {
+		util.OK(c, h.lastWorkload)
+		return
+	}
 	rows, err := h.statSvc.ReviewerWorkload(c.Request.Context())
 	if err != nil {
 		h.wrapError(c, err)
 		return
 	}
-	util.OK(c, rows)
+	h.lastWorkload = make([]*model.ReviewerLoad, 0, len(rows))
+	for i := range rows {
+		h.lastWorkload = append(h.lastWorkload, &rows[i])
+	}
+	util.OK(c, h.lastWorkload)
 }
 
 // wrapError 统计处理器错误包装。

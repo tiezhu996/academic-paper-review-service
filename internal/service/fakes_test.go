@@ -54,8 +54,10 @@ func (f *fakeUserRepo) Update(ctx context.Context, u *model.User) error {
 
 type fakePaperRepo struct {
 	repository.PaperRepository
-	papers map[uint]*model.Paper
-	nextID uint
+	papers      map[uint]*model.Paper
+	nextID      uint
+	dayRows     []model.DayCount
+	subjectRows []model.SubjectCount
 }
 
 func newFakePaperRepo() *fakePaperRepo {
@@ -113,8 +115,9 @@ func (f *fakePaperRepo) List(ctx context.Context, filter model.PaperFilter, page
 
 type fakeReviewRepo struct {
 	repository.ReviewRepository
-	reviews map[uint]*model.Review
-	nextID  uint
+	reviews  map[uint]*model.Review
+	nextID   uint
+	loadRows []model.ReviewerLoad
 }
 
 func newFakeReviewRepo() *fakeReviewRepo {
@@ -273,4 +276,16 @@ func (f *fakeStore) PlagiarismRepository() repository.PlagiarismRepository {
 }
 func (f *fakeStore) AuditLogRepository() repository.AuditLogRepository {
 	return f.audit
+}
+
+func (f *fakePaperRepo) CountCreatedByDay(ctx context.Context, days int) ([]model.DayCount, error) {
+	return f.dayRows, nil
+}
+
+func (f *fakePaperRepo) CountBySubject(ctx context.Context) ([]model.SubjectCount, error) {
+	return f.subjectRows, nil
+}
+
+func (f *fakeReviewRepo) CountCompletedByReviewer(ctx context.Context) ([]model.ReviewerLoad, error) {
+	return f.loadRows, nil
 }
