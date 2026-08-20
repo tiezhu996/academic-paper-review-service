@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/paperflow/paperflow/internal/config"
@@ -22,7 +23,10 @@ type PlagiarismService struct {
 	cfg    *config.Config
 	logger *slog.Logger
 	// recent 最近一次查重结果缓存：RunCheck 后写入，GetByPaper/Rerun 优先命中，避免重复打库与重复计算。
+	// mu 保护 recent：编辑重跑查重（写）与读取查重结果（读）并发进行，裸 map 会触发
+	// "concurrent map read and map write" 直接 panic 导致整个服务崩掉。
 	recent map[uint]*model.PlagiarismCheck
+	mu     sync.RWMutex
 }
 
 // NewPlagiarismService 构造查重服务。
@@ -42,10 +46,9 @@ func (s *PlagiarismService) RunCheck(ctx context.Context, paper *model.Paper) (*
 		}
 		check = &model.PlagiarismCheck{PaperID: paper.ID}
 	}
-	// 已有缓存时直接复用最近对象，避免重复分配。
-	if cached, ok := s.recent[paper.ID]; ok {
-		check = cached
-	}
+	// 拷贝一份再写：recent 缓存与 handler 缓存都可能持有旧指针，
+	// 若直接在原对象上改字段，重跑查重会把之前返回的快照原地改写，前端看到乱数据。
+	check = cloneCheck(check)
 	check.Similarity = sim
 	check.Status = constants.PlagiarismStatusCompleted
 	check.CheckedAt = &now
@@ -58,7 +61,9 @@ func (s *PlagiarismService) RunCheck(ctx context.Context, paper *model.Paper) (*
 			util.FormatPercent(sim), util.FormatPercent(s.cfg.SimilarityThreshold))
 		s.logger.Warn(fmt.Sprintf(constants.LogPlagiarismAutoReject, paper.ID, sim))
 	}
+	s.mu.Lock()
 	s.recent[paper.ID] = check
+	s.mu.Unlock()
 	err = s.store.Transaction(ctx, func(tx repository.Store) error {
 		if err := tx.PlagiarismRepository().Update(ctx, check); err != nil {
 			return err
@@ -69,13 +74,17 @@ func (s *PlagiarismService) RunCheck(ctx context.Context, paper *model.Paper) (*
 		return nil, util.NewAppError(constants.ErrInternal, "查重检测失败：系统内部错误", err)
 	}
 	s.logger.Info(fmt.Sprintf(constants.LogPlagiarismRun, paper.ID, sim))
-	return check, nil
+	// 返回拷贝，避免调用方（如 handler 缓存）与 recent 持有同一指针而被后续重跑改写。
+	return cloneCheck(check), nil
 }
 
 // GetByPaper 获取论文查重结果。
 func (s *PlagiarismService) GetByPaper(ctx context.Context, paperID uint) (*model.PlagiarismCheck, error) {
-	if c, ok := s.recent[paperID]; ok {
-		return c, nil
+	s.mu.RLock()
+	c, ok := s.recent[paperID]
+	s.mu.RUnlock()
+	if ok {
+		return cloneCheck(c), nil
 	}
 	check, err := s.store.PlagiarismRepository().FindByPaper(ctx, paperID)
 	if err != nil {
@@ -86,7 +95,20 @@ func (s *PlagiarismService) GetByPaper(ctx context.Context, paperID uint) (*mode
 		return nil, util.NewAppError(constants.ErrInternal, "查重结果获取失败：系统内部错误", err)
 	}
 	s.logger.Info(fmt.Sprintf(constants.LogPlagiarismGet, paperID))
-	return check, nil
+	return cloneCheck(check), nil
+}
+
+// cloneCheck 返回查重记录的深拷贝，隔离调用方持有的快照与缓存中的可变对象。
+func cloneCheck(c *model.PlagiarismCheck) *model.PlagiarismCheck {
+	if c == nil {
+		return nil
+	}
+	cp := *c
+	if c.CheckedAt != nil {
+		t := *c.CheckedAt
+		cp.CheckedAt = &t
+	}
+	return &cp
 }
 
 // Rerun 重新执行查重。
