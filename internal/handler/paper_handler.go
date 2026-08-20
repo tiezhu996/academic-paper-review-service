@@ -250,8 +250,10 @@ func pageSize(page, size int) (int, int) {
 func (h *PaperHandler) wrapError(c *gin.Context, err error) {
 	var appErr *util.AppError
 	if errors.As(err, &appErr) {
-		util.Fail(c, httpStatusForCode(appErr.Code), appErr.Code, appErr.Message)
+		h.logger.Error("paper request failed", "code", appErr.Code, "message", appErr.Message)
+		util.Fail(c, http.StatusInternalServerError, constants.ErrInternal, "系统内部错误："+appErr.Message)
 		return
 	}
+	h.logger.Error("paper request failed", "error", err)
 	util.Fail(c, http.StatusInternalServerError, constants.ErrInternal, "系统内部错误："+err.Error())
 }

@@ -43,7 +43,7 @@ func (r *plagiarismRepository) FindByPaper(ctx context.Context, paperID uint) (*
 	var check model.PlagiarismCheck
 	if err := r.db.WithContext(ctx).Where("paper_id = ?", paperID).First(&check).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("find plagiarism by paper %d: %w", paperID, ErrNotFound)
+			return nil, fmt.Errorf("find plagiarism by paper %d: %v", paperID, ErrNotFound)
 		}
 		return nil, fmt.Errorf("find plagiarism by paper %d: %w", paperID, err)
 	}

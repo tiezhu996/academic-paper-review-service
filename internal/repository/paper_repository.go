@@ -52,7 +52,7 @@ func (r *paperRepository) FindByID(ctx context.Context, id uint) (*model.Paper, 
 	var p model.Paper
 	if err := r.db.WithContext(ctx).First(&p, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("find paper %d: %w", id, ErrNotFound)
+			return nil, fmt.Errorf("find paper %d: %v", id, ErrNotFound)
 		}
 		return nil, fmt.Errorf("find paper %d: %w", id, err)
 	}
@@ -63,7 +63,7 @@ func (r *paperRepository) FindByIDForUpdate(ctx context.Context, id uint) (*mode
 	var p model.Paper
 	if err := r.db.WithContext(ctx).Clauses(clause.Locking{Strength: "UPDATE"}).First(&p, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("lock paper %d: %w", id, ErrNotFound)
+			return nil, fmt.Errorf("lock paper %d: %v", id, ErrNotFound)
 		}
 		return nil, fmt.Errorf("lock paper %d: %w", id, err)
 	}
@@ -82,7 +82,7 @@ func (r *paperRepository) FindByIDWithDetail(ctx context.Context, id uint) (*mod
 		}).
 		First(&p, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, fmt.Errorf("find paper detail %d: %w", id, ErrNotFound)
+			return nil, fmt.Errorf("find paper detail %d: %v", id, ErrNotFound)
 		}
 		return nil, fmt.Errorf("find paper detail %d: %w", id, err)
 	}
