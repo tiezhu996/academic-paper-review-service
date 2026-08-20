@@ -19,6 +19,7 @@ type Paper struct {
 	InitialReviewComment string     `gorm:"type:text" json:"initial_review_comment"`
 	FinalComment         string     `gorm:"type:text" json:"final_comment"`
 	FinalDecision        string     `gorm:"size:32" json:"final_decision"`
+	FinalDecisionText    string     `json:"final_decision_text,omitempty"`
 	Similarity           float64    `gorm:"default:0" json:"similarity"`
 	CreatedAt            time.Time  `json:"created_at"`
 	UpdatedAt            time.Time  `json:"updated_at"`

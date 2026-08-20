@@ -55,14 +55,10 @@ func FormatReviewStatus(status string) string {
 // FormatReviewDecision 评审等级中文文本。
 func FormatReviewDecision(decision string) string {
 	switch decision {
-	case constants.ReviewDecisionAccept:
-		return "录用"
-	case constants.ReviewDecisionMinorRevision:
-		return "小修后录用"
-	case constants.ReviewDecisionMajorRevision:
-		return "大修后重审"
-	case constants.ReviewDecisionReject:
-		return "拒稿"
+	case constants.PaperStatusAccepted:
+		return "已录用"
+	case constants.PaperStatusRejected:
+		return "已拒稿"
 	default:
 		return decision
 	}

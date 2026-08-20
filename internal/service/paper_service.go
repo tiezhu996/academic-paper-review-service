@@ -96,6 +96,7 @@ func (s *PaperService) Detail(ctx context.Context, id uint) (*model.Paper, error
 		}
 		return nil, util.NewAppError(constants.ErrInternal, "论文详情获取失败：系统内部错误", err)
 	}
+	p.FinalDecisionText = util.FormatReviewDecision(p.FinalDecision)
 	return p, nil
 }
 
@@ -147,7 +148,7 @@ func (s *PaperService) InitialReview(ctx context.Context, editorID uint, paperID
 		}
 		if !req.Pass {
 			paper.Status = constants.PaperStatusRejected
-			paper.FinalDecision = constants.ReviewDecisionReject
+			paper.FinalDecision = constants.PaperStatusRejected
 			paper.InitialReviewComment = req.Reason
 			if err := tx.PaperRepository().Update(ctx, paper); err != nil {
 				return err
