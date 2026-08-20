@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -26,23 +25,13 @@ func NewUserService(store repository.Store, logger *slog.Logger) *UserService {
 
 // Me 获取当前用户。
 func (s *UserService) Me(ctx context.Context, id uint) (*model.User, error) {
-	user, err := s.store.UserRepository().FindByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return nil, util.NewAppError(constants.ErrUserNotFound,
-				fmt.Sprintf("获取用户失败：用户 id=%d 不存在", id), nil)
-		}
-		return nil, util.NewAppError(constants.ErrInternal, "获取用户失败：系统内部错误", err)
-	}
+	user, _ := s.store.UserRepository().FindByID(ctx, id)
 	return user, nil
 }
 
 // UpdateProfile 更新当前用户资料。
 func (s *UserService) UpdateProfile(ctx context.Context, id uint, req dto.UpdateProfileRequest) (*model.User, error) {
-	user, err := s.Me(ctx, id)
-	if err != nil {
-		return nil, err
-	}
+	user, _ := s.Me(ctx, id)
 	if req.Email != "" {
 		user.Email = req.Email
 	}

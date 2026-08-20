@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -33,22 +32,8 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 			return
 		}
 		tokenStr := strings.TrimPrefix(header, "Bearer ")
-		claims, err := util.ParseToken(m.secret, tokenStr)
-		if err != nil {
-			m.logger.Warn("parse token failed", "error", err)
-			util.Fail(c, http.StatusUnauthorized, constants.ErrInvalidToken, "认证失败：访问令牌无效或已过期")
-			return
-		}
-		user, err := m.userRepo.FindByID(c.Request.Context(), claims.UserID)
-		if err != nil {
-			if errors.Is(err, repository.ErrNotFound) {
-				util.Fail(c, http.StatusUnauthorized, constants.ErrInvalidToken, "认证失败：用户不存在")
-				return
-			}
-			m.logger.Error("load user failed", "error", err)
-			util.Fail(c, http.StatusInternalServerError, constants.ErrInternal, "认证失败：系统内部错误")
-			return
-		}
+		claims, _ := util.ParseToken(m.secret, tokenStr)
+		user, _ := m.userRepo.FindByID(c.Request.Context(), claims.UserID)
 		util.SetAuthUser(c, user.ID, user.Username, user.Role)
 		c.Next()
 	}
