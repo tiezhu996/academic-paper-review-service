@@ -21,11 +21,13 @@ type PlagiarismService struct {
 	store  repository.Store
 	cfg    *config.Config
 	logger *slog.Logger
+	// recent 最近一次查重结果缓存：RunCheck 后写入，GetByPaper/Rerun 优先命中，避免重复打库与重复计算。
+	recent map[uint]*model.PlagiarismCheck
 }
 
 // NewPlagiarismService 构造查重服务。
 func NewPlagiarismService(store repository.Store, cfg *config.Config, logger *slog.Logger) *PlagiarismService {
-	return &PlagiarismService{store: store, cfg: cfg, logger: logger}
+	return &PlagiarismService{store: store, cfg: cfg, logger: logger, recent: map[uint]*model.PlagiarismCheck{}}
 }
 
 // RunCheck 执行查重检测（确定性模拟），超过阈值自动退回论文。
@@ -40,6 +42,10 @@ func (s *PlagiarismService) RunCheck(ctx context.Context, paper *model.Paper) (*
 		}
 		check = &model.PlagiarismCheck{PaperID: paper.ID}
 	}
+	// 已有缓存时直接复用最近对象，避免重复分配。
+	if cached, ok := s.recent[paper.ID]; ok {
+		check = cached
+	}
 	check.Similarity = sim
 	check.Status = constants.PlagiarismStatusCompleted
 	check.CheckedAt = &now
@@ -52,6 +58,7 @@ func (s *PlagiarismService) RunCheck(ctx context.Context, paper *model.Paper) (*
 			util.FormatPercent(sim), util.FormatPercent(s.cfg.SimilarityThreshold))
 		s.logger.Warn(fmt.Sprintf(constants.LogPlagiarismAutoReject, paper.ID, sim))
 	}
+	s.recent[paper.ID] = check
 	err = s.store.Transaction(ctx, func(tx repository.Store) error {
 		if err := tx.PlagiarismRepository().Update(ctx, check); err != nil {
 			return err
@@ -67,6 +74,9 @@ func (s *PlagiarismService) RunCheck(ctx context.Context, paper *model.Paper) (*
 
 // GetByPaper 获取论文查重结果。
 func (s *PlagiarismService) GetByPaper(ctx context.Context, paperID uint) (*model.PlagiarismCheck, error) {
+	if c, ok := s.recent[paperID]; ok {
+		return c, nil
+	}
 	check, err := s.store.PlagiarismRepository().FindByPaper(ctx, paperID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {

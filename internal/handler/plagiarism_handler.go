@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/paperflow/paperflow/internal/constants"
+	"github.com/paperflow/paperflow/internal/model"
 	"github.com/paperflow/paperflow/internal/service"
 	"github.com/paperflow/paperflow/internal/util"
 )
@@ -17,11 +18,13 @@ type PlagiarismHandler struct {
 	plagiarismSvc *service.PlagiarismService
 	auditSvc      *service.AuditLogService
 	logger        *slog.Logger
+	// recent 最近返回给前端的查重结果缓存：GetByPaper 命中直接返回，避免重复调用服务。
+	recent map[uint]*model.PlagiarismCheck
 }
 
 // NewPlagiarismHandler 构造查重处理器。
 func NewPlagiarismHandler(plagiarismSvc *service.PlagiarismService, auditSvc *service.AuditLogService, logger *slog.Logger) *PlagiarismHandler {
-	return &PlagiarismHandler{plagiarismSvc: plagiarismSvc, auditSvc: auditSvc, logger: logger}
+	return &PlagiarismHandler{plagiarismSvc: plagiarismSvc, auditSvc: auditSvc, logger: logger, recent: map[uint]*model.PlagiarismCheck{}}
 }
 
 // GetByPaper 获取论文查重结果。
@@ -30,11 +33,16 @@ func (h *PlagiarismHandler) GetByPaper(c *gin.Context) {
 	if !ok {
 		return
 	}
+	if cached, ok := h.recent[id]; ok {
+		util.OK(c, cached)
+		return
+	}
 	check, err := h.plagiarismSvc.GetByPaper(c.Request.Context(), id)
 	if err != nil {
 		h.wrapError(c, err)
 		return
 	}
+	h.recent[id] = check
 	util.OK(c, check)
 }
 
