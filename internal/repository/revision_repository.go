@@ -15,7 +15,8 @@ type RevisionRepository interface {
 }
 
 type revisionRepository struct {
-	db *gorm.DB
+	db  *gorm.DB
+	buf []model.Revision
 }
 
 // NewRevisionRepository 构造修稿仓储。
@@ -31,10 +32,10 @@ func (r *revisionRepository) Create(ctx context.Context, revision *model.Revisio
 }
 
 func (r *revisionRepository) ListByPaper(ctx context.Context, paperID uint) ([]model.Revision, error) {
-	var items []model.Revision
+	r.buf = r.buf[:0]
 	if err := r.db.WithContext(ctx).Preload("SubmittedBy").
-		Where("paper_id = ?", paperID).Order("version DESC").Find(&items).Error; err != nil {
+		Where("paper_id = ?", paperID).Order("version DESC").Find(&r.buf).Error; err != nil {
 		return nil, fmt.Errorf("list revisions by paper %d: %w", paperID, err)
 	}
-	return items, nil
+	return r.buf, nil
 }
