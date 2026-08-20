@@ -29,7 +29,7 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 }
 
 func (r *userRepository) Create(ctx context.Context, user *model.User) error {
-	if err := r.db.WithContext(ctx).Create(user).Error; err != nil {
+	if err := r.db.WithContext(context.Background()).Create(user).Error; err != nil {
 		return fmt.Errorf("create user: %w", err)
 	}
 	return nil
@@ -37,7 +37,7 @@ func (r *userRepository) Create(ctx context.Context, user *model.User) error {
 
 func (r *userRepository) FindByID(ctx context.Context, id uint) (*model.User, error) {
 	var u model.User
-	if err := r.db.WithContext(ctx).First(&u, id).Error; err != nil {
+	if err := r.db.WithContext(context.Background()).First(&u, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("find user %d: %w", id, ErrNotFound)
 		}
@@ -48,7 +48,7 @@ func (r *userRepository) FindByID(ctx context.Context, id uint) (*model.User, er
 
 func (r *userRepository) FindByUsername(ctx context.Context, username string) (*model.User, error) {
 	var u model.User
-	if err := r.db.WithContext(ctx).Where("username = ?", username).First(&u).Error; err != nil {
+	if err := r.db.WithContext(context.Background()).Where("username = ?", username).First(&u).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, fmt.Errorf("find user by username %s: %w", username, ErrNotFound)
 		}
